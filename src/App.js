@@ -1,14 +1,19 @@
-import React, { Component } from "react";
+import React, { Component, Fragment } from "react";
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import axios from "axios";
-// import './App.css';
 import "bootstrap/dist/css/bootstrap.min.css";
 import Navbar from "./components/layout/Navbar";
+import Users from "./components/users/Users";
 import User from "./components/users/User";
 import Search from "./components/users/Search";
-import Alert from './components/layout/Alert';
+import Alert from "./components/layout/Alert";
+import About from "./components/pages/About";
+
 class App extends Component {
   state = {
     users: [],
+    user: {},
+    repos: [],
     loading: false,
     alert: null
   };
@@ -35,28 +40,74 @@ class App extends Component {
   clearUsers = () => {
     this.setState({ loading: false, users: [] });
   };
-  setAlert = (msg,type) => {
-    this.setState({alert: {msg,type}})
+  setAlert = (msg, type) => {
+    this.setState({ alert: { msg, type } });
     setTimeout(() => {
-      this.setState({alert:null})
+      this.setState({ alert: null });
     }, 5000);
-  }
+  };
+
+  getUser = async username => {
+    this.setState({ loading: true });
+    const res = await axios.get(
+      `https://api.github.com/users/${username}?client_id=${
+        process.env.REACT_APP_CLIENT_ID
+      }&client_secret=${process.env.REACT_APP_SECRET_ID}`
+    );
+    this.setState({ user: res.data, loading: false });
+  };
+  getUserRepos = async username => {
+    this.setState({ loading: true });
+    const res = await axios.get(
+      `https://api.github.com/users/${username}/repos?per_page=5&sort=created:asc&client_id=${
+        process.env.REACT_APP_CLIENT_ID
+      }&client_secret=${process.env.REACT_APP_SECRET_ID}`
+    );
+    this.setState({ repos: res.data, loading: false });
+  };
   render() {
-    const { users, loading } = this.state;
+    const { users, loading, user,repos } = this.state;
     return (
-      <div className="App">
-        <Navbar />
-        <div className="container">
-          <Alert alert={this.state.alert} />
-          <Search
-            searchUsers={this.searchUsers}
-            clearUsers={this.clearUsers}
-            showClear={users.length > 0 ? true : false}
-            setAlert = {this.setAlert}
-          />
-          <User loading={loading} users={users} />
+      <Router>
+        <div className="App">
+          <Navbar />
+          <div className="container">
+            <Alert alert={this.state.alert} />
+            <Switch>
+              <Route
+                path="/"
+                exact
+                render={props => (
+                  <Fragment>
+                    <Search
+                      searchUsers={this.searchUsers}
+                      clearUsers={this.clearUsers}
+                      showClear={users.length > 0 ? true : false}
+                      setAlert={this.setAlert}
+                    />
+                    <Users loading={loading} users={users} />
+                  </Fragment>
+                )}
+              />
+              <Route exact path="/about" component={About} />
+              <Route
+                exact
+                path="/user/:login"
+                render={props => (
+                  <User
+                    {...props}
+                    getUser={this.getUser}
+                    user={user}
+                    repos={repos}
+                    loading={loading}
+                    getUserRepos={this.getUserRepos}
+                  />
+                )}
+              />
+            </Switch>
+          </div>
         </div>
-      </div>
+      </Router>
     );
   }
 }
